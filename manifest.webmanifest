@@ -6,8 +6,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f2f4f1",
-  "theme_color": "#193f31",
+  "background_color": "#07121f",
+  "theme_color": "#07121f",
   "description": "从童年青训到退役的足球人生模拟，含2026中甲和中超。",
   "icons": [
     {
