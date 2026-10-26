@@ -241,7 +241,7 @@ function validateV3(x){if(!legacyValidate(x))return false;if(x.pace&&!['highligh
 /* V4: achievements, family succession, national windows and player-specific duels. */
 const SHENZHEN_ID='cfl8h7ubdanybaf9yo7su5w327mc';
 const TACTICS={balanced:{n:'攻守平衡',desc:'保持原有机会与负荷',chance:0,attack:1,load:0},press:{n:'主动压迫',desc:'抢先出手，额外消耗体力且更容易吃牌',chance:.025,attack:1.14,load:3},counter:{n:'快速反击',desc:'成功时更有威胁，处理难度稍高',chance:-.025,attack:1.4,load:2},protect:{n:'保护局面',desc:'优先成功率，降低直接进攻收益',chance:.055,attack:.65,load:0}};
-function upgrade(s){
+function upgradeV40(s){
  upgradeV3(s);if(!s||s.v!==2)return s;s.edition=4;s.originYear=s.originYear||2026;
  s.badges=Array.isArray(s.badges)?s.badges:[];s.peakAttrs=s.peakAttrs||{...s.attrs};
  s.duels=s.duels||{played:0,won:0,players:[],practice:0,lastPracticeStep:-1};s.duels.players=s.duels.players||[];s.duels.practiceMemory=s.duels.practiceMemory||[];
@@ -318,7 +318,7 @@ function normalizedPlayer(t){return String(t).normalize('NFD').replace(/[\u0300-
 const playerRecords=new Map(D.players.map(p=>[normalizedPlayer(p[1]),p]));
 const legendRecords=new Map();
 function legendPlayer(scene){const key=scene.playerKey;if(legendRecords.has(key))return legendRecords.get(key);const names=[scene.playerEnglish,...(scene.playerAliases||[])].map(normalizedPlayer),fixedId=scene.playerId||({alisson:105470}[key]);const p=(fixedId?D.players.find(x=>x[0]===fixedId):null)||names.map(n=>playerRecords.get(n)).find(Boolean)||D.players.find(p=>names.some(n=>n&&normalizedPlayer(p[1])===n));legendRecords.set(key,p||null);return p;}
-function legendCatalog(){
+function legendCatalogV40(){
  const list=[],seen=new Set();for(const scene of g.CAREER_LEGEND_SCENES||[]){if(seen.has(scene.playerKey))continue;seen.add(scene.playerKey);const p=legendPlayer(scene);list.push({key:scene.playerKey,name:scene.playerName,english:scene.playerEnglish,nation:scene.playerNation,playerId:p?.[0]||null,clubId:p?playerClubId(p):null,scenes:(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerKey===scene.playerKey).length});}return list;
 }
 function attachLegendScenes(s,p,pool){
@@ -327,12 +327,12 @@ function attachLegendScenes(s,p,pool){
  p.roundTotal=p.legendSceneIds.length;delete p.sceneIds;p.playerDuel=true;p.tactic=s.tactic||'balanced';p.cards={yellow:0,red:0};
  s.sceneMemory.push(...p.legendSceneIds);return true;
 }
-function setupMatch(s){
+function setupMatchV40(s){
  setupMatchV3(s);const p=s.pending;if(p?.tier!=='first')return;
  const pool=(g.CAREER_LEGEND_SCENES||[]).filter(x=>{const player=legendPlayer(x);return player&&playerClubId(player)===p.rivalId;});
  attachLegendScenes(s,p,pool);
 }
-function matchOptions(s){
+function matchOptionsV40(s){
  const p=s.pending;if(p?.kind!=='match')return null;
  const scene=p.legendSceneIds&&(g.CAREER_LEGEND_SCENES||[]).find(x=>x.id===p.legendSceneIds[p.round]);let result;
  if(scene){const player=legendPlayer(scene),relative=(rating(s)-(p.international?78:(getClub(p.rivalId)?.power||75)))/400;
@@ -342,10 +342,10 @@ function matchOptions(s){
  return{...result,options:result.options.map(o=>({...o,originalAttack:o.attack||0,attack:(o.attack||0)*tactic.attack,risk:typeof o.risk==='number'?o.risk:.18,riskText:o.riskText||(typeof o.risk==='string'?o.risk:'需要结合局面判断'),chance:s.secret?.active?.985:round(clamp(o.chance+tactic.chance,.1,.95),2)}))};
 }
 function setTactic(s,key){if(!TACTICS[key]||s.pending?.kind!=='match'||s.pending.outcome)return{ok:false,message:'当前无法改变这次处理。'};s.pending.tactic=key;s.tactic=key;return{ok:true,message:TACTICS[key].n+'已生效，选项概率与收益已更新。'};}
-function play(s,index){
+function playV40(s,index){
  const p=s.pending;if(p?.kind!=='match'||p.outcome)return null;const options=matchOptions(s),option=options.options[index];if(!option)return null;
  const result=playV3(s,index);if(!result)return null;const tactic=TACTICS[p.tactic||s.tactic]||TACTICS.balanced;if(tactic.load)apply(s,{fatigue:tactic.load});
- if(options.playerKey){s.duels.played++;result.playerName=options.playerName;result.playerKey=options.playerKey;if(result.success){s.duels.won++;if(!s.duels.players.includes(options.playerKey))s.duels.players.push(options.playerKey);}}
+ if(options.playerKey&&options.relation!=='teammate'&&options.relation!=='training'){s.duels.played++;result.playerName=options.playerName;result.playerKey=options.playerKey;if(result.success){s.duels.won++;if(!s.duels.players.includes(options.playerKey))s.duels.players.push(options.playerKey);}}
  const foul=option.foul||option.tacticalFoul||(!result.success&&(p.tactic==='press'||option.cardRisk)&&rand(s)<.16);
  if(foul){
   p.cards=p.cards||{yellow:0,red:0};
@@ -378,10 +378,10 @@ function answerCallup(s,mode){
  else{c.status=mode==='rest'?'rested':'declined';apply(s,mode==='rest'?{fatigue:-9,health:3,nationalRep:s.injury?0:-1}:{family:4,nationalRep:-4});}
  const message={accept:'你已应召。下一次推进会进入国家队事件与比赛高光。',managed:'已与教练沟通限制出场，本窗口负荷降低，同时减少一场比赛。',rest:'已申请轮休。本窗口优先恢复，未来仍可再次被征召。',decline:'已婉拒这次征召，国家队评价会受到影响。'}[mode];note(s,'回复国家队',message,'national');checkAchievements(s);return{ok:true,message};
 }
-function setupInternationalMatch(s){
+function setupInternationalMatchV40(s){
  const c=s.international.callup,ctx=competitionContext(s),isSenior=c.level==='senior';
  s.pending={kind:'match',flowVersion:4,international:true,round:0,roundTotal:1,sceneIds:[],score:[0,0],home:null,away:null,rivalId:null,opponent:(D.countries[c.opponent]||c.opponent)+(isSenior?'国家队':' '+c.level),boost:0,plays:[],outcome:null,clubId:null,ownHome:true,tier:'international',competition:c.competition,teamName:(D.countries[s.nation]||s.nation)+(isSenior?'国家队':' '+c.level),minute:20+Math.floor(rand(s)*35),tactic:s.tactic||'balanced',cards:{yellow:0,red:0}};
- const pool=isSenior?(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerNation===c.opponent):[];
+ const pool=isSenior?(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerNation===c.opponent&&x.relation!=='teammate'&&x.relation!=='training'):[];
  if(!attachLegendScenes(s,s.pending,pool)){
   const choices=(g.CAREER_MATCH_SCENES||[]).filter(x=>x.levels.includes('first')&&x.positions.includes(s.pos));const first=choose(s,choices);s.pending.sceneIds=[first.id];s.pending.roundTotal=1;
  }
@@ -441,8 +441,8 @@ function nextGeneration(s){
  next.dynasty={generation:s.dynasty.generation+1,ancestors:s.dynasty.ancestors.concat(previous),child:null};next.heritage={parentName:s.name,parentClubId:previous.clubId,networkBonus:child.networkBonus,potential:child.potential,inheritance:{...child.gifts}};next.peakAttrs={...next.attrs};next.bestRating=rating(next);
  note(next,'接过父辈的球衣',`故事回到${originYear}年，${child.name}七岁时的球场。你继承了一部分足球天赋与家族人脉，新的成绩仍由这一代自己的选择决定。`,'family');checkAchievements(next);return{ok:true,state:next,message:'下一代已经接棒，从七岁时回溯开始。上一代记录已保存在家族荣誉墙。'};
 }
-function practiceScene(s,key){const pool=(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerKey===key&&x.roles.includes(s.pos)),all=pool.length?pool:(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerKey===key),fresh=all.filter(x=>!s.duels.practiceMemory.includes(x.id)),choices=fresh.length?fresh:all;return choices[s.step%Math.max(1,choices.length)];}
-function practiceLegend(s,key,index){
+function practiceSceneV40(s,key){const pool=(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerKey===key&&x.roles.includes(s.pos)),all=pool.length?pool:(g.CAREER_LEGEND_SCENES||[]).filter(x=>x.playerKey===key),fresh=all.filter(x=>!s.duels.practiceMemory.includes(x.id)),choices=fresh.length?fresh:all;return choices[s.step%Math.max(1,choices.length)];}
+function practiceLegendV40(s,key,index){
  upgrade(s);if(s.pending||s.retired)return{ok:false,message:'请先完成当前比赛；退役后可把经验交给下一代。'};if(s.duels.lastPracticeStep===s.step)return{ok:false,message:'本回合已经完成球星研究，继续人生后再训练。'};
  const scene=practiceScene(s,key),option=scene?.options[index];if(!option)return{ok:false,message:'没有找到这个训练选项。'};
  const chance=s.secret?.active?.985:round(clamp(option.base+((s.attrs[option.key]??s[option.key]??50)-50)/250,.15,.94),2),roll=rand(s),success=roll<chance;s.duels.lastPracticeStep=s.step;s.duels.practice++;apply(s,success?{knowledge:2,confidence:1,fatigue:2}:{knowledge:1,fatigue:3});if(success&&option.key in attrs)s.attrs[option.key]=clamp(s.attrs[option.key]+.3,1,99);
@@ -475,7 +475,7 @@ const ACHIEVEMENTS=[
  ['world_cup','把世界带回家','国家队','赢得一次模拟世界杯',1,s=>s.international.trophies.filter(x=>x.kind==='world').length,'legend'],
  ['duel','与巨星正面对话','对决','在真实对手情境中成功一次',1,s=>s.duels.won,'silver'],
  ['giant','巨星克星','对决','成功应对 5 位不同的真实球星',5,s=>s.duels.players.length,'gold'],
- ['study_tape','录像室里的加练','对决','在 5 个不同回合完成球星录像训练',5,s=>s.duels.practice,'silver'],
+ ['study_tape','录像室里的加练','对决','在 5 个不同回合完成球星录像训练',5,s=>(s.duels.practiceTurns?.length??s.duels.practice),'silver'],
  ['parent','足球家庭','传承','建立自己的孩子档案',1,s=>Number(!!s.dynasty.child),'bronze'],
  ['mentor','最好的第一任教练','传承','陪伴培养孩子 8 次',8,s=>s.dynasty.child?.mentored||0,'gold'],
  ['torch','接过那件球衣','传承','正式开启第二代人生',2,s=>s.dynasty.generation,'gold'],
@@ -489,7 +489,7 @@ function achievementStatus(s){return ACHIEVEMENTS.map(([id,title,category,condit
 function checkAchievements(s){
  const fresh=[];for(const a of achievementStatus(s)){if(a.unlocked||a.progress<a.target)continue;const record={id:a.id,title:a.title,age:s.age,year:s.year,step:s.step,generation:s.dynasty.generation};s.badges.push(record);fresh.push(a.title);note(s,'成就解锁 · '+a.title,a.condition,'achievement');}return fresh;
 }
-function validate(x){
+function validateV40(x){
  try{
   if(!validateV3(x))return false;if(!Number.isInteger(x.originYear)||x.originYear<1900||x.originYear>5000||x.year!==x.originYear+Math.floor(x.step/4))return false;
   if(!Array.isArray(x.badges)||x.badges.length>ACHIEVEMENTS.length||new Set(x.badges.map(a=>a.id)).size!==x.badges.length||x.badges.some(a=>!ACHIEVEMENTS.some(d=>d[0]===a.id)))return false;
@@ -501,5 +501,77 @@ function validate(x){
  }catch{return false;}
 }
 
-g.ProEngine={TACTICS,MENTORING,SHENZHEN_ID,setupMatch,setupInternationalMatch,achievementStatus,checkAchievements,createChild,mentorChild,nextGeneration,answerCallup,nationalCalendar,callupChance,updateCallup,practiceScene,practiceLegend,legendCatalog,setTactic,worldHonors,start,migrate,validate,upgrade,squadTier,competitionContext,arcSpan,arcLabel,offerAnalysis,scoutInvitations,declineOffer,autoMatch,attrs,positions,training,phases,roles,stage,rating,valuation,getClub,activeClub,date,rand,normal,clamp,round,events:EVENTS,prepare,currentEvent,eventProbability,chooseEvent,next,matchOptions,play,finish,ensureLeague,leagueKey,trialProbability,applyClub,negotiate,negotiationChance,sign,renewal,transferRequest,recall,buyout,hireAgent,route,release,changePosition,retire,injuryChance,marketOpen};
+/* 4.1 interaction directory: curated players plus every real record in the database. */
+const interactionRows=new Map(D.players.map(p=>[String(p[0]),p]));
+const featuredInteractions=g.CAREER_INTERACTION_PROFILES||[],featuredById=new Map(featuredInteractions.map(p=>[String(p.playerId),p])),featuredByKey=new Map(featuredInteractions.map(p=>[p.key,p]));
+const generatedProfiles=new Map(),interactionScenes=new Map((g.CAREER_LEGEND_SCENES||[]).map(scene=>[scene.id,scene])),rostersByClub=new Map();
+for(const row of D.players){const id=playerClubId(row);if(!rostersByClub.has(id))rostersByClub.set(id,[]);rostersByClub.get(id).push(row);}
+function interactionPosition(row){
+ const p=String(row[5]||'').toLowerCase();if(/goalkeeper|门将/.test(p))return'GK';if(/centre.back|center.back|中后卫/.test(p))return'CB';if(/left.back|right.back|wing.back|边后卫/.test(p))return'FB';if(/defensive midfield|后腰/.test(p))return'DM';if(/attacking midfield|前腰/.test(p))return'AM';if(/left winger|right winger|winger|边锋/.test(p))return'LW';if(/forward|striker|中锋/.test(p))return'ST';if(/central midfield|中场/.test(p))return'CM';const h=hash(row[0]);return/defender/.test(p)?['CB','FB'][h%2]:/attacker/.test(p)?['ST','LW'][h%2]:['CM','DM','AM'][h%3];
+}
+function interactionPlayer(value){
+ if(value&&typeof value==='object')value=value.key||value.playerId||value.id;const key=String(value??'');if(featuredByKey.has(key))return featuredByKey.get(key);const id=key.startsWith('db_')?key.slice(3):key;if(featuredById.has(id))return featuredById.get(id);if(generatedProfiles.has(id))return generatedProfiles.get(id);const row=interactionRows.get(id);if(!row)return null;
+ const position=interactionPosition(row),clubId=playerClubId(row),club=clubs.get(clubId),themes={ST:['禁区跑位','观察防线身后的空当，再突然改变启动方向'],LW:['边路变速','先沿边线拉开宽度，再利用变速寻找内切空间'],AM:['肋部创造','在两条防线之间接球，观察身后跑动后送出最后一传'],CM:['节奏控制','侧身接球观察两侧，把球转移到压迫较弱的一边'],DM:['中路保护','在中卫身前控制接球路线，断球后迅速寻找安全出口'],CB:['禁区保护','先控制与球门的距离，再根据触球方向决定卡位或上抢'],FB:['边路攻守','结合边锋的站位选择套边，同时留意身后的回防通道'],GK:['门前判断','先调整站位和脚步，再根据来球轨迹决定接球或封挡']}[position];
+ const profile={key:'db_'+id,playerId:row[0],name:row[1],english:row[1],nation:row[2],clubId,position,domestic:club?.country==='China',styleTitle:themes[0],signature:themes[1],theme:themes[0],generated:true};generatedProfiles.set(id,profile);return profile;
+}
+function ensurePlayerScenes(profile){
+ profile=interactionPlayer(profile);if(!profile)return[];const first='v41_'+profile.key+'_opponent';if(!interactionScenes.has(first)){const scenes=g.makePlayerInteractionScenes(profile);for(const scene of scenes){if(interactionScenes.has(scene.id))continue;interactionScenes.set(scene.id,scene);g.CAREER_LEGEND_SCENES.push(scene);}}
+ return(g.CAREER_LEGEND_SCENES||[]).filter(scene=>scene.playerKey===profile.key);
+}
+function interactionCounts(){return{featured:featuredInteractions.length,domestic:featuredInteractions.filter(p=>p.domestic).length,international:featuredInteractions.filter(p=>!p.domestic).length,allPlayers:D.players.length,featuredScenes:57+featuredInteractions.length*6};}
+function legendCatalog(){return featuredInteractions.map(p=>({key:p.key,name:p.name,english:p.english,nation:p.nation,playerId:p.playerId,clubId:p.clubId,position:p.position,domestic:p.domestic,scenes:ensurePlayerScenes(p).length}));}
+function listInteractions(settings={}){
+ const scope=settings.scope==='all'?'all':'featured',region=['domestic','international'].includes(settings.region)?settings.region:'all',position=positions[settings.position]?settings.position:'all',query=String(settings.query||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),pageSize=clamp(Number(settings.pageSize)||20,8,24),matches=[];
+ const sources=scope==='all'?D.players:featuredInteractions;
+ for(const item of sources){const featured=scope==='all'?featuredById.get(String(item[0])):item,id=featured?.playerId??item[0],clubId=featured?.clubId||playerClubId(item),club=clubs.get(clubId),domestic=featured?.domestic??club?.country==='China',pos=featured?.position||interactionPosition(item);
+  if(region==='domestic'&&!domestic||region==='international'&&domestic||position!=='all'&&position!==pos)continue;
+  if(query){const text=[featured?.name||item[1],featured?.english||item[1],featured?.styleTitle||'',featured?.theme||'',club?.cn||'',club?.n||'',D.countries[featured?.nation||item[2]]||featured?.nation||item[2]].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();if(!text.includes(query))continue;}
+  matches.push(id);
+ }
+ const pages=Math.max(1,Math.ceil(matches.length/pageSize)),page=clamp(Math.floor(Number(settings.page)||0),0,pages-1);
+ return{items:matches.slice(page*pageSize,(page+1)*pageSize).map(interactionPlayer),total:matches.length,page,pages,pageSize,scope,...interactionCounts()};
+}
+function upgrade(s){upgradeV40(s);if(!s||s.v!==2)return s;s.release='4.1';s.relationships=s.relationships||{};
+ if(!Array.isArray(s.duels.practiceTurns))s.duels.practiceTurns=[...new Set(s.log.filter(x=>x.type==='training'&&(/球星录像室|球员互动/.test(x.title))).map(x=>x.step))];
+ if(s.pending?.interactionPlayerIds&&Array.isArray(s.pending.interactionPlayerIds)&&s.pending.interactionPlayerIds.length<=2)for(const id of s.pending.interactionPlayerIds)ensurePlayerScenes(id);
+ return s;
+}
+function interactionUsage(s){const turn=s.duels.turnInteractions;return{limit:3,used:turn?.step===s.step?[...turn.used]:s.duels.lastPracticeStep===s.step?['duel']:[],step:s.step};}
+function interactionScene(s,value,kind='duel'){
+ const profile=interactionPlayer(value);if(!profile)return null;const all=ensurePlayerScenes(profile),relation=kind==='team'?'teammate':kind==='learn'?'training':'opponent',pool=all.filter(x=>(x.relation||'opponent')===relation&&x.roles.includes(s.pos));const seen=new Set(s.duels.practiceMemory||[]),fresh=pool.filter(x=>!seen.has(x.id)),choices=fresh.length?fresh:pool;return choices[(s.step+hash(profile.key))%Math.max(1,choices.length)]||null;
+}
+function availableInteractionKinds(s,value){return['duel','team','learn'].filter(kind=>!!interactionScene(s,value,kind));}
+function practiceScene(s,key){return interactionScene(s,key,'duel')||interactionScene(s,key,'learn')||interactionScene(s,key,'team');}
+function bondWith(s,profile,success,relation,live=true){const id=String(profile.playerId),previous=s.relationships[id]||{trust:40,understanding:15,interactions:0};s.relationships[id]={trust:round(clamp(previous.trust+(live?(success?(relation==='teammate'?4:relation==='training'?2:1):-.8):0)),1),understanding:round(clamp(previous.understanding+(success?3:1)),1),interactions:previous.interactions+1,lastStep:s.step};return s.relationships[id];}
+function practiceLegend(s,key,index,sceneId){
+ upgrade(s);if(s.pending||s.retired)return{ok:false,message:'请先完成当前回合。退役后可以让下一代继续这些互动。'};const profile=interactionPlayer(key);if(!profile)return{ok:false,message:'没有找到这位资料库球员。'};
+ const all=ensurePlayerScenes(profile),scene=sceneId?all.find(x=>x.id===sceneId&&x.roles.includes(s.pos)):practiceScene(s,profile),option=scene?.options[index];if(!option)return{ok:false,message:'这个情境不适合你当前的位置，请选择其他互动类型。'};
+ const kind=scene.relation==='teammate'?'team':scene.relation==='training'?'learn':'duel',usage=interactionUsage(s);if(usage.used.includes(kind)||usage.used.length>=usage.limit)return{ok:false,message:'本回合已完成这类互动。可以选择另一类，或继续人生后再来。'};
+ const bond=s.relationships[String(profile.playerId)],chance=s.secret?.active?.985:round(clamp(option.base+((s.attrs[option.key]??s[option.key]??50)-50)/250+(scene.relation==='teammate'?(bond?.understanding||0)/2500:0),.15,.94),2),roll=rand(s),success=roll<chance;
+ s.duels.turnInteractions={step:s.step,used:usage.used.concat(kind)};s.duels.lastPracticeStep=s.step;s.duels.practice++;if(!s.duels.practiceTurns.includes(s.step))s.duels.practiceTurns.push(s.step);
+ const live=squadTier(s)==='first'&&activeClub(s)?.id===profile.clubId;
+ apply(s,success?{knowledge:kind==='learn'?3:2,confidence:1,fatigue:Math.max(1,option.load||2),friendship:live?(kind==='team'?1.5:.5):0}:{knowledge:1,fatigue:Math.max(2,option.load||3)});if(success&&option.key in attrs)s.attrs[option.key]=round(clamp(s.attrs[option.key]+(kind==='learn'?.4:.25),1,99),2);
+ const relationship=bondWith(s,profile,success,scene.relation||'opponent',live);s.duels.practiceMemory.push(scene.id);if(s.duels.practiceMemory.length>160)s.duels.practiceMemory.shift();
+ const text=success?option.goodText:option.badText;note(s,'球员互动 · '+profile.name,text,'training');const newBadges=checkAchievements(s);return{ok:true,success,chance,roll,text,choice:option.n,playerName:profile.name,profile,scene,kind,relationship,newBadges};
+}
+function registerPendingPlayers(s){const p=s.pending;if(p?.legendSceneIds)p.interactionPlayerIds=[...new Set(p.legendSceneIds.map(id=>interactionScenes.get(id)?.playerId).filter(x=>x!==undefined))];}
+function setupMatch(s){
+ setupMatchV3(s);const p=s.pending;if(p?.tier!=='first')return;let pool=[];
+ for(const [id,relation]of [[p.rivalId,'opponent'],[p.clubId,'teammate']]){
+  if(!id)continue;const curated=featuredInteractions.filter(x=>x.clubId===id),roster=(rostersByClub.get(id)||[]).filter(row=>!featuredById.has(String(row[0]))).sort((a,b)=>(b[8]||b[6]||0)-(a[8]||a[6]||0)).slice(0,2),profiles=curated.concat(roster.map(row=>interactionPlayer(row[0])));
+  for(const profile of profiles)pool.push(...ensurePlayerScenes(profile).filter(scene=>(scene.relation||'opponent')===relation));
+ }
+ attachLegendScenes(s,p,pool);registerPendingPlayers(s);
+}
+function setupInternationalMatch(s){setupInternationalMatchV40(s);const p=s.pending,c=s.international.callup;if(c.level!=='senior'){registerPendingPlayers(s);return;}if(!p?.playerDuel){const national=D.players.filter(row=>row[2]===c.opponent).sort((a,b)=>(b[8]||b[6]||0)-(a[8]||a[6]||0)).slice(0,3),pool=national.flatMap(row=>ensurePlayerScenes(row[0]).filter(x=>(x.relation||'opponent')==='opponent'));attachLegendScenes(s,p,pool);}registerPendingPlayers(s);}
+function matchOptions(s){const result=matchOptionsV40(s);if(!result)return null;if(result.relation==='teammate'){const bonus=(s.relationships?.[String(result.playerId)]?.understanding||0)/2500;return{...result,chemistryBonus:round(bonus,3),options:result.options.map(o=>({...o,chance:round(clamp(o.chance+bonus,.1,s.secret?.active?.985:.95),2)}))};}return result;}
+function play(s,index){const scene=s.pending?.kind==='match'?matchOptions(s):null,result=playV40(s,index);if(result&&scene?.playerKey){const profile=interactionPlayer(scene.playerKey);if(profile)bondWith(s,profile,result.success,scene.relation||'opponent');}return result;}
+function validate(s){
+ try{if(s.pending?.interactionPlayerIds){if(!Array.isArray(s.pending.interactionPlayerIds)||s.pending.interactionPlayerIds.length>2||s.pending.interactionPlayerIds.some(id=>!interactionRows.has(String(id))))return false;for(const id of s.pending.interactionPlayerIds)ensurePlayerScenes(id);}
+ if(!validateV40(s))return false;const bonds=s.relationships||{};if(typeof bonds!=='object'||Array.isArray(bonds)||Object.keys(bonds).length>1200||Object.entries(bonds).some(([id,b])=>!interactionRows.has(id)||![b.trust,b.understanding].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||!Number.isInteger(b.interactions)||b.interactions<0))return false;
+ const turn=s.duels.turnInteractions;if(turn&&(!Number.isInteger(turn.step)||turn.step<0||turn.step>s.step||!Array.isArray(turn.used)||turn.used.length>3||new Set(turn.used).size!==turn.used.length||turn.used.some(x=>!['duel','team','learn'].includes(x))))return false;return true;
+ }catch{return false;}
+}
+
+g.ProEngine={interactionPlayer,interactionPosition,ensurePlayerScenes,interactionCounts,listInteractions,interactionScene,availableInteractionKinds,interactionUsage,TACTICS,MENTORING,SHENZHEN_ID,setupMatch,setupInternationalMatch,achievementStatus,checkAchievements,createChild,mentorChild,nextGeneration,answerCallup,nationalCalendar,callupChance,updateCallup,practiceScene,practiceLegend,legendCatalog,setTactic,worldHonors,start,migrate,validate,upgrade,squadTier,competitionContext,arcSpan,arcLabel,offerAnalysis,scoutInvitations,declineOffer,autoMatch,attrs,positions,training,phases,roles,stage,rating,valuation,getClub,activeClub,date,rand,normal,clamp,round,events:EVENTS,prepare,currentEvent,eventProbability,chooseEvent,next,matchOptions,play,finish,ensureLeague,leagueKey,trialProbability,applyClub,negotiate,negotiationChance,sign,renewal,transferRequest,recall,buyout,hireAgent,route,release,changePosition,retire,injuryChance,marketOpen};
 })(typeof window!=='undefined'?window:globalThis);
