@@ -59,18 +59,18 @@ if(professional&&apps)apply(s,{reputation:Math.max(0,(matchRating-6.5)*1.8)});co
 s.history.push(result);s.bestRating=Math.max(s.bestRating,r);if(s.quarter===3){if(l){const table=[...l.teams].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga));if(table[0]?.id===club?.id){const title=competitionContext(s).name+'冠军';s.achievements.push({age:s.age,year:s.year,title,clubId:club.id});note(s,'赛季的冠军时刻',`${club.cn||club.n} 赢得了${title}。`,'honor');apply(s,{reputation:5,confidence:5});}}if(professional&&s.season.matchRating>=7.5&&s.season.apps>=16){s.achievements.push({age:s.age,year:s.year,title:'球队赛季最佳球员',clubId:club?.id});}if(s.age<18&&s.clubId&&s.coach<20&&rand(s)<.38){note(s,'青训评估未获留用','俱乐部决定不继续本阶段培养。你可以寻找新的青训环境，也可以选择学业路线。','release');s.clubId=null;s.contract=null;s.loan=null;}s.season={apps:0,goals:0,assists:0,youthApps:0,cleanSheets:0,minutes:0,matchRating:0,salary:0};}
 s.step++;s.quarter=s.step%4;s.age=7+Math.floor(s.step/4);s.year=(s.originYear||2026)+Math.floor(s.step/4);s.pending=null;s.lastResult=result;s.offers=s.offers.filter(o=>o.expires>=s.step&&o.status==='active');if(s.loan&&s.step>=s.loan.end){note(s,'租借结束，返回母队',`你完成了在 ${getClub(s.loan.clubId)?.cn||getClub(s.loan.clubId)?.n} 的租借。`,'loan');s.careerMoves.push({step:s.step,age:s.age,kind:'return',from:s.loan.clubId,to:s.clubId});s.loan=null;s.coach=clamp(s.coach-8);}
 if(s.contract&&s.step>=s.contract.end){note(s,'合同到期，成为自由球员','双方没有在到期前签下新协议。你可以免费接洽新的俱乐部。','contract');s.contract=null;s.clubId=null;s.loan=null;s.squad=s.age<18?'school':'community';}if(s.age>=40)retire(s,'rest');return result;}
-function marketOpen(s){return phases[s.quarter].window||!s.contract||s.age<18;}
-function eligible(s,c,kind){if(s.retired||s.pending)return'请先完成当前阶段，年初再处理球队事务。';if(s.route!=='football')return'需要先在生涯规划中选择职业足球路线。';if(s.age<9)return'9 岁起可以申请俱乐部基础青训；当前可进行校园与社区足球。';if(kind==='academy'&&s.age>=18)return'成年球员请申请一线队试训。';if(s.age<18&&c.country!==s.nation&&!(s.nation==='China'&&c.country==='China'))return'本模拟中未成年球员只开放本国青训，成年后可前往海外。';if(kind==='loan'&&(!s.contract||s.contract.kind!=='pro'||s.loan))return'租借需要有效职业合同，且当前没有进行中的租借。';if(kind==='loan'&&s.contract.end-s.step<2)return'母队合同剩余不足六个月，请先评估续约。';if(s.loan&&kind!=='loan')return'租借期间请先返回母队，或与俱乐部协商买断。';if(!marketOpen(s))return'当前转会窗口关闭，可在夏季或冬季处理注册。';if(c.id===s.clubId||c.id===s.loan?.clubId)return'你已经效力于这家俱乐部。';return null;}
+function marketOpenV41(s){return phases[s.quarter].window||!s.contract||s.age<18;}
+function eligibleV41(s,c,kind){if(s.retired||s.pending)return'请先完成当前阶段，年初再处理球队事务。';if(s.route!=='football')return'需要先在生涯规划中选择职业足球路线。';if(s.age<9)return'9 岁起可以申请俱乐部基础青训；当前可进行校园与社区足球。';if(kind==='academy'&&s.age>=18)return'成年球员请申请一线队试训。';if(s.age<18&&c.country!==s.nation&&!(s.nation==='China'&&c.country==='China'))return'本模拟中未成年球员只开放本国青训，成年后可前往海外。';if(kind==='loan'&&(!s.contract||s.contract.kind!=='pro'||s.loan))return'租借需要有效职业合同，且当前没有进行中的租借。';if(kind==='loan'&&s.contract.end-s.step<2)return'母队合同剩余不足六个月，请先评估续约。';if(s.loan&&kind!=='loan')return'租借期间请先返回母队，或与俱乐部协商买断。';if(!marketOpen(s))return'当前转会窗口关闭，可在夏季或冬季处理注册。';if(c.id===s.clubId||c.id===s.loan?.clubId)return'你已经效力于这家俱乐部。';return null;}
 function trialProbabilityV3(s,c,kind='trial'){c=getClub(c.id||c);const gap=rating(s)-(c.power-(s.age<14?27:s.age<18?20:10));let p=.55+gap/80+s.scouting/700+(s.agent?.quality||0)/500+(kind==='loan'?s.loanSupport/800:0)-(s.injury?.weeks||0)/70;return round(clamp(p,.08,.9),2);}
 function offerTerms(s,c,kind){const youth=s.age<18;const wage=youth?round(15+Math.max(0,rating(s)-30)*c.power/65):round(Math.max(160,Math.pow(Math.max(10,rating(s)-26),2.75)*(c.power/75)**1.8/40));const role=youth?'youth':rating(s)>=c.power+1?'star':rating(s)>=c.power-8?'starter':rating(s)>=c.power-17?'rotation':'prospect';const years=youth?2:s.age>=33?1:s.age>=29?2:3;return{wage,years,role,signingBonus:round(wage*(youth?2:8)),appBonus:youth?0:round(wage*.12),goalBonus:youth?0:round(wage*.17),release:round(Math.max(20000,valuation(s)*1.8)),buyout:kind==='loan'?round(valuation(s)*1.2):0,duration:kind==='loan'?4:0,salaryShare:kind==='loan'?60:100};}
-function applyClub(s,id,kind='trial'){const c=getClub(id);if(!c)return{ok:false,message:'俱乐部不存在。'};if(s.age<18&&kind==='trial')kind='academy';const err=eligible(s,c,kind);if(err)return{ok:false,message:err};if(s.applications.some(a=>a.id===id&&a.step===s.step&&a.kind===kind))return{ok:false,message:'这个阶段已联系过该俱乐部，请等待下个阶段。'};if(s.applications.filter(a=>a.step===s.step).length>=4)return{ok:false,message:'每阶段最多联系四家俱乐部，避免无限重复试训。'};let chance=trialProbability(s,c,kind);let roll=rand(s);const ok=roll<chance;s.applications.push({id,kind,step:s.step,chance,success:ok});if(!ok){note(s,kind==='loan'?'租借接洽未达成':'这次选拔未通过',`${c.cn||c.n} 暂未提供机会。参考成功概率 ${round(chance*100)}%。`,'application',{success:false});apply(s,{confidence:-2});return{ok:false,chance,rolled:true,message:`${c.cn||c.n} 这次没有发出邀请。可以继续提升，或比较其他培养环境。`};}
+function applyClubV41(s,id,kind='trial'){const c=getClub(id);if(!c)return{ok:false,message:'俱乐部不存在。'};if(s.age<18&&kind==='trial')kind='academy';const err=eligible(s,c,kind);if(err)return{ok:false,message:err};if(s.applications.some(a=>a.id===id&&a.step===s.step&&a.kind===kind))return{ok:false,message:'这个阶段已联系过该俱乐部，请等待下个阶段。'};if(s.applications.filter(a=>a.step===s.step).length>=4)return{ok:false,message:'每阶段最多联系四家俱乐部，避免无限重复试训。'};let chance=trialProbability(s,c,kind);let roll=rand(s);const ok=roll<chance;s.applications.push({id,kind,step:s.step,chance,success:ok});if(!ok){note(s,kind==='loan'?'租借接洽未达成':'这次选拔未通过',`${c.cn||c.n} 暂未提供机会。参考成功概率 ${round(chance*100)}%。`,'application',{success:false});apply(s,{confidence:-2});return{ok:false,chance,rolled:true,message:`${c.cn||c.n} 这次没有发出邀请。可以继续提升，或比较其他培养环境。`};}
 if(kind!=='loan'&&s.contract?.kind==='pro'){const fee=valuation(s),willing=clamp(.5+(s.coach<35?.2:0)+(s.contract.end-s.step<=4?.2:0)+(s.transferListed?.2:0)-(s.contract.role==='star'?.2:0),.15,.88);if(rand(s)>willing&&fee<s.contract.release){note(s,'母队拒绝转会接洽',`${c.cn||c.n} 表达了兴趣，但母队不愿在这个阶段放行。`,'transfer');return{ok:false,chance:willing,rolled:true,message:'新球队有兴趣，但母队拒绝放行。可以申请挂牌、等待合同末期，或在解约金范围内继续谈判。'};}}
 if(kind==='loan'&&rand(s)>clamp(.65+s.loanSupport/400-(s.contract.role==='star'?.35:0),.2,.9)){note(s,'母队暂不同意外租','俱乐部希望你继续留队竞争，租借安排暂时没有获得批准。','loan');return{ok:false,rolled:true,message:'租借目的地愿意接洽，但母队暂不同意外租。'};}
 const terms=offerTerms(s,c,kind);if(kind==='loan'){terms.wage=s.contract.wage;terms.appBonus=s.contract.appBonus;terms.goalBonus=s.contract.goalBonus;terms.release=s.contract.release;terms.signingBonus=0;terms.duration=s.contract.end-s.step>=4?4:2;}const offer={id:'offer'+s.nextId++,clubId:id,kind:s.age<18?'academy':kind,created:s.step,expires:s.step,status:'active',chance,transferFee:kind!=='loan'&&s.contract?.kind==='pro'?Math.min(s.contract.release,valuation(s)):0,terms,base:JSON.parse(JSON.stringify(terms)),attempts:0};s.offers.unshift(offer);note(s,'一份可以认真比较的邀请',`${c.cn||c.n} 发来了${kind==='loan'?'租借意向':s.age<18?'青训培养邀请':'职业合同意向'}。你可以审阅条款，接受或提出反报价。`,'offer');return{ok:true,chance,offer,message:'已收到正式意向，请到「合同与经纪」查看、谈判和签约。'};}
 function negotiationChanceV3(s,o,t){const wageRatio=t.wage/Math.max(1,o.base.wage);const roleRank={youth:0,prospect:1,rotation:2,starter:3,star:4};return round(clamp(.82-(wageRatio-1)*.65-Math.max(0,(roleRank[t.role]||0)-(roleRank[o.base.role]||0))*.14-Math.max(0,t.years-o.base.years)*.05-Math.max(0,1-t.release/Math.max(1,o.base.release))*.12+(s.agent?.quality||0)/650+s.knowledge/850-(o.kind==='loan'?Math.max(0,t.salaryShare-o.base.salaryShare)/300+Math.max(0,t.duration-o.base.duration)*.035:0),.12,.9),2);}
 function negotiate(s,id,proposal,confirm=false){const o=s.offers.find(x=>x.id===id&&x.status==='active');if(!o||o.expires<s.step)return{ok:false,message:'意向已过期。'};if(s.pending)return{ok:false,message:'完成当前阶段后再处理谈判。'};const t={...o.terms,wage:round(clamp(Number(proposal.wage)||o.terms.wage,0,o.base.wage*3)),years:clamp(round(Number(proposal.years)||o.terms.years),1,s.age<18?2:5),role:roles[proposal.role]?proposal.role:o.terms.role,release:round(clamp(Number(proposal.release)||o.terms.release,o.base.release*.35,o.base.release*3)),duration:[2,4].includes(Number(proposal.duration))?Number(proposal.duration):o.terms.duration,salaryShare:clamp(Number(proposal.salaryShare)||o.terms.salaryShare,10,100)};if(o.kind==='loan'){t.duration=Math.min(t.duration,s.contract.end-s.step>=4?4:2);t.release=s.contract.release;t.wage=s.contract.wage;t.role=proposal.role==='youth'?'rotation':t.role;t.years=o.terms.years;}const chance=negotiationChance(s,o,t);if(!confirm)return{ok:true,preview:true,chance,terms:t};if(o.attempts>=2)return{ok:false,message:'本意向最多两次反报价，可接受现有条款或放弃。'};o.attempts++;if(o.kind!=='academy'&&o.kind!=='promotion')t.squad=t.role==='prospect'?'reserves':'first';if(rand(s)<chance){o.terms=t;note(s,'反报价获得接受',`${getClub(o.clubId)?.cn||getClub(o.clubId)?.n} 同意调整条款。`,'contract');return{ok:true,chance,message:'俱乐部接受了反报价，新条款已写入意向。'};}note(s,'反报价未获接受','对方保留原有条款，没有接受这次调整。','contract');return{ok:false,chance,message:'对方没有接受反报价，原意向仍然有效。'};}
 function signV3(s,id){const o=s.offers.find(x=>x.id===id&&x.status==='active');if(!o||o.expires<s.step||s.pending||s.retired)return{ok:false,message:'意向已过期或当前不可办理。'};const c=getClub(o.clubId),t=o.terms,from=s.clubId,transferFee=s.contract?.kind==='pro'&&o.kind!=='renewal'?(o.transferFee??valuation(s)):0,firstPro=!s.careerMoves.some(m=>['free','transfer','renewal'].includes(m.kind));if(o.kind==='loan'){if(!s.contract||s.loan)return{ok:false,message:'当前已不符合租借条件。'};s.loan={squad:t.squad||'first',clubId:c.id,start:s.step,end:Math.min(s.step+t.duration,s.contract.end),role:t.role,salaryShare:t.salaryShare,buyout:t.buyout,parentId:s.clubId};s.careerMoves.push({step:s.step,age:s.age,kind:'loan',from:s.clubId,to:c.id});note(s,'租借协议已生效',`${c.cn||c.n}，租期 ${s.loan.end-s.step} 个季度。母队合同保持有效；租借球队承担 ${t.salaryShare}% 薪资。`,'loan');}else{s.loan=null;s.clubId=c.id;s.squad=t.squad||(s.age<18?'academy':t.role==='prospect'?'reserves':'first');s.contract={squad:s.squad,youthRole:t.youthRole||'starter',clubId:c.id,kind:s.age<18?'academy':'pro',start:s.step,end:s.step+t.years*4,wage:t.wage,role:t.role,signingBonus:t.signingBonus,appBonus:t.appBonus,goalBonus:t.goalBonus,release:t.release,promisedRole:t.role};const agentFee=round(t.signingBonus*(s.agent?.fee||0)/100);s.cash+=t.signingBonus-agentFee;s.careerMoves.push({step:s.step,age:s.age,kind:o.kind==='promotion'?'promotion':o.kind==='renewal'?'renewal':s.age<18?'academy':from?'transfer':'free',from,to:c.id,fee:from?transferFee:0});note(s,o.kind==='renewal'?'完成续约':s.age<18?'加入新的青训梯队':'正式签下职业合同',`${c.cn||c.n} · ${t.years} 年 · 周薪 €${t.wage} · ${roles[t.role]}。`,'contract');}s.coach=clamp(45+(rating(s)-c.power)/2,30,70);s.adaptability=clamp(s.adaptability-(c.country!==s.nation?8:2));o.status='signed';s.offers=s.offers.filter(x=>x.id===id);s.transferListed=false;if(o.kind==='renewal')s.lastRenewal=s.step;if(o.kind!=='promotion'&&(o.kind!=='renewal'||firstPro&&s.age>=18)){s.storyQueue=s.storyQueue||[];const scene=o.kind==='loan'?'loanarrival':s.age<18?'academyarrival':firstPro?'firstprofessional':'clubarrival';if(!s.storyQueue.includes(scene))s.storyQueue.push(scene);}return{ok:true,message:o.kind==='loan'?'租借生效，回归日期已记录。':'合同签署完成。'};}
-function renewal(s){if(!s.clubId||!s.contract||s.loan||s.pending||s.retired)return{ok:false,message:'需要有效合同且当前不在租借或阶段事件中。'};if(s.offers.some(o=>o.kind==='renewal'&&o.created===s.step))return{ok:false,message:'本阶段已经发起续约，请查看现有意向。'};if(s.renewalAttempt===s.step)return{ok:false,message:'本阶段已沟通过续约，请下阶段再评估。'};if(Number.isInteger(s.lastRenewal)&&s.step-s.lastRenewal<4)return{ok:false,message:'新续约生效未满一年，俱乐部暂不重谈。'};s.renewalAttempt=s.step;const c=getClub(s.clubId),chance=clamp(.7+(rating(s)-c.power)/100+(s.coach-50)/250,.1,.9);if(rand(s)>chance){note(s,'续约谈判暂缓','俱乐部希望继续观察表现，暂未发出新的条款。','contract');return{ok:false,message:'俱乐部暂不准备续约，可在后续阶段再沟通。'};}const terms=offerTerms(s,c,'renewal');s.offers.unshift({id:'offer'+s.nextId++,clubId:c.id,kind:'renewal',created:s.step,expires:s.step,status:'active',chance,terms,base:JSON.parse(JSON.stringify(terms)),attempts:0});return{ok:true,message:'续约意向已生成，请审阅条款。'};}
+function renewalV41(s){if(!s.clubId||!s.contract||s.loan||s.pending||s.retired)return{ok:false,message:'需要有效合同且当前不在租借或阶段事件中。'};if(s.offers.some(o=>o.kind==='renewal'&&o.created===s.step))return{ok:false,message:'本阶段已经发起续约，请查看现有意向。'};if(s.renewalAttempt===s.step)return{ok:false,message:'本阶段已沟通过续约，请下阶段再评估。'};if(Number.isInteger(s.lastRenewal)&&s.step-s.lastRenewal<4)return{ok:false,message:'新续约生效未满一年，俱乐部暂不重谈。'};s.renewalAttempt=s.step;const c=getClub(s.clubId),chance=clamp(.7+(rating(s)-c.power)/100+(s.coach-50)/250,.1,.9);if(rand(s)>chance){note(s,'续约谈判暂缓','俱乐部希望继续观察表现，暂未发出新的条款。','contract');return{ok:false,message:'俱乐部暂不准备续约，可在后续阶段再沟通。'};}const terms=offerTerms(s,c,'renewal');s.offers.unshift({id:'offer'+s.nextId++,clubId:c.id,kind:'renewal',created:s.step,expires:s.step,status:'active',chance,terms,base:JSON.parse(JSON.stringify(terms)),attempts:0});return{ok:true,message:'续约意向已生成，请审阅条款。'};}
 function transferRequest(s){if(!s.contract||s.loan||s.pending)return{ok:false,message:'当前无法提出转会请求。'};if(s.transferListed)return{ok:false,message:'已经提出过转会请求。'};if(s.transferAttempt===s.step)return{ok:false,message:'本阶段已经提出过转会诉求。'};s.transferAttempt=s.step;const p=clamp(.55+(s.coach<45?.2:0)+(s.contract.end-s.step<=4?.15:0),.15,.9);if(rand(s)<p){s.transferListed=true;apply(s,{coach:-4});note(s,'俱乐部同意听取转会报价','母队愿意评估合理报价，最终放行仍取决于谈判。','transfer');return{ok:true,message:'已获准听取转会报价，母队放行概率提高。'};}apply(s,{coach:-6});return{ok:false,message:'球队暂不同意挂牌，关系受到一些影响。'};}
 function recall(s){if(!s.loan||s.pending)return{ok:false,message:'当前没有可以协商的租借。'};if(s.recallAttempt===s.step)return{ok:false,message:'本阶段已协商过提前回归。'};s.recallAttempt=s.step;const chance=clamp(.5+(s.coach<40?.2:0)+s.knowledge/500,.25,.85);if(rand(s)<chance){const from=s.loan.clubId;s.loan=null;s.coach=45;s.careerMoves.push({step:s.step,age:s.age,kind:'recall',from,to:s.clubId});note(s,'提前结束租借','三方达成一致，你提前回到了母队。','loan');return{ok:true,message:'提前回归已达成一致。'};}return{ok:false,message:'三方没有达成一致，需要继续履行当前租借。'};}
 function buyout(s){if(!s.loan?.buyout||s.pending)return{ok:false,message:'当前没有可执行的买断条款。'};const c=getClub(s.loan.clubId),chance=clamp(.52+(rating(s)-c.power)/100+(s.coach-45)/250,.18,.88);if(s.buyoutAttempt===s.step)return{ok:false,message:'本阶段已协商过买断。'};s.buyoutAttempt=s.step;if(rand(s)>chance)return{ok:false,message:'租借球队暂不愿支付约定买断费用。'};const fee=s.loan.buyout,from=s.clubId,terms=offerTerms(s,c,'transfer');s.offers.unshift({id:'offer'+s.nextId++,clubId:c.id,kind:'buyout',created:s.step,expires:s.step,status:'active',transferFee:fee,terms,base:JSON.parse(JSON.stringify(terms)),attempts:0});note(s,'买断费用达成一致',`两家俱乐部就 €${fee} 买断费用达成一致，个人合同仍需你审阅签署。`,'loan');s.buyoutFrom=from;return{ok:true,message:'买断个人合同已进入意向列表。'};}
@@ -231,7 +231,7 @@ function scoutInvitationsV3(s,force=false){
  if(offers.length)note(s,'俱乐部主动来信',`${offers.length} 份不同发展方向的邀请已到达。比较培养、薪资、梯队和角色后再决定，不需要立刻签约。`,'offer');return offers;
 }
 function declineOffer(s,id){const o=s.offers.find(o=>o.id===id&&o.status==='active');if(!o||s.pending)return{ok:false,message:'当前无法处理这份邀请。'};o.status='declined';note(s,'婉拒一份邀请',`你没有接受 ${getClub(o.clubId)?.cn||getClub(o.clubId)?.n} 的当前方案。`,'offer');return{ok:true,message:'已婉拒这份邀请，之后仍可能出现其他机会。'};}
-function promotionInvitation(s){
+function promotionInvitationV41(s){
  const c=activeClub(s),ctx=competitionContext(s);if(!c||!s.contract||s.loan||s.pending||s.age<16||!['academy','reserves'].includes(ctx.tier)||s.coach<58||rating(s)<c.power-15||s.offers.some(o=>o.kind==='promotion'&&o.status==='active'))return null;
  const terms=offerTerms(s,c,'promotion');terms.squad='first';terms.role=rating(s)>=c.power-7?'rotation':'prospect';terms.wage=Math.max(s.contract.wage,terms.wage);
  const o={id:'offer'+s.nextId++,clubId:c.id,kind:'promotion',source:'coach',reason:'教练组邀请你加入一线队培养名单，这需要你主动接受；也可以继续在原层级积累。',created:s.step,expires:s.step+Math.max(1,arcSpan(s)-1),status:'active',terms,base:JSON.parse(JSON.stringify(terms)),attempts:0};s.offers.push(o);note(s,'晋升机会来自教练组','一线队希望给你新的机会，请比较出场和竞争压力后再决定。','offer');return o;
@@ -264,9 +264,9 @@ function secretBoost(s){
 function applyTraining(s){applyTrainingV3(s);secretBoost(s);for(const k of Object.keys(attrs))s.peakAttrs[k]=Math.max(s.peakAttrs[k]||1,s.attrs[k]);}
 function injuryChance(s){return s.secret?.active?.0005:injuryChanceV3(s);}
 function eventProbability(s,c){return s.secret?.active?Math.max(.97,eventProbabilityV3(s,c)):eventProbabilityV3(s,c);}
-function trialProbability(s,c,kind='trial'){const base=trialProbabilityV3(s,c,kind),bonus=(s.heritage?.networkBonus||0)/500;return s.secret?.active?.995:round(clamp(base+bonus,.08,.96),2);}
+function trialProbabilityV41(s,c,kind='trial'){const base=trialProbabilityV3(s,c,kind),bonus=(s.heritage?.networkBonus||0)/500;return s.secret?.active?.995:round(clamp(base+bonus,.08,.96),2);}
 function negotiationChance(s,o,t){return s.secret?.active?Math.max(.97,negotiationChanceV3(s,o,t)):negotiationChanceV3(s,o,t);}
-function sign(s,id){
+function signV41(s,id){
  upgrade(s);const o=s.offers.find(x=>x.id===id),wasFirst=s.firstAcademyId,result=signV3(s,id);if(!result.ok)return result;
  if(!wasFirst&&o?.terms.squad==='academy'){s.firstAcademyId=o.clubId;
   if(o.clubId===SHENZHEN_ID){s.secret={active:true,id:'shenzhen-king',triggerAge:s.age};secretBoost(s);note(s,'隐藏路线解锁 · 鹏城球王','第一支青训队选择深圳青年人，你获得王者培养轨迹：成长更快、伤病更少，成年后更易得到豪门邀约。','destiny');result.message+=' 隐藏路线「鹏城球王」已开启。';}
@@ -279,7 +279,7 @@ function addInvitation(s,c,kind,reason,source='scout'){
  const terms=offerTerms(s,c,kind),o={id:'offer'+s.nextId++,clubId:c.id,kind,source,reason,created:s.step,expires:s.step+Math.max(1,arcSpan(s)-1),status:'active',terms,base:JSON.parse(JSON.stringify(terms)),attempts:0,releaseAgreed:true,transferFee:s.contract?.kind==='pro'?valuation(s):0};
  s.offers.push(o);return o;
 }
-function scoutInvitations(s,force=false){
+function scoutInvitationsV41(s,force=false){
  upgrade(s);const offers=scoutInvitationsV3(s,force);if(s.pending||s.retired||s.route!=='football'||s.loan||s.age<9||!marketOpen(s))return offers;
  if(!s.firstAcademyId&&s.nation==='China'&&s.age<18&&(!Number.isFinite(s.lastShenzhenInvite)||s.step-s.lastShenzhenInvite>=8)){
   const o=addInvitation(s,getClub(SHENZHEN_ID),'academy','深圳青年人的青训观察员邀请你来参加同龄梯队培养，比较其他方案后再决定。');if(o){offers.push(o);s.lastShenzhenInvite=s.step;}
@@ -407,7 +407,7 @@ function worldHonors(s){
  if(eligible){s.worldHonors.goldenBalls.push({year,age:s.age,rating:rating(s)});s.achievements.push({title:'世界年度最佳球员 · 模拟金球奖',year,age:s.age});note(s,'世界年度最佳球员',`${s.name}凭借整个赛季的表现赢得模拟金球奖。`,'honor');}
  if(s.worldHonors.goldenBalls.length>=3&&s.bestRating>=95&&!s.worldHonors.worldKing){s.worldHonors.worldKing=true;note(s,'世界球王 · 时代的名字','三个世界年度最佳球员奖与巅峰能力共同确立了你的传奇地位。','honor');}
 }
-function finish(s){
+function finishV41(s){
  upgrade(s);if(!s.pending||s.retired)return null;let internationalRows=null;
  if(s.pending.international){internationalRows=settleInternational(s,s.pending);s.pending={kind:'event',queue:[EVENTS[0].id],index:0,outcome:{success:true},flowVersion:4};}
  const hadInjury=!!s.injury,result=finishV3(s);if(!result)return result;
@@ -531,7 +531,7 @@ function listInteractions(settings={}){
  const pages=Math.max(1,Math.ceil(matches.length/pageSize)),page=clamp(Math.floor(Number(settings.page)||0),0,pages-1);
  return{items:matches.slice(page*pageSize,(page+1)*pageSize).map(interactionPlayer),total:matches.length,page,pages,pageSize,scope,...interactionCounts()};
 }
-function upgrade(s){upgradeV40(s);if(!s||s.v!==2)return s;s.release='4.1';s.relationships=s.relationships||{};
+function upgradeV41(s){upgradeV40(s);if(!s||s.v!==2)return s;s.release='4.1';s.relationships=s.relationships||{};
  if(!Array.isArray(s.duels.practiceTurns))s.duels.practiceTurns=[...new Set(s.log.filter(x=>x.type==='training'&&(/球星录像室|球员互动/.test(x.title))).map(x=>x.step))];
  if(s.pending?.interactionPlayerIds&&Array.isArray(s.pending.interactionPlayerIds)&&s.pending.interactionPlayerIds.length<=2)for(const id of s.pending.interactionPlayerIds)ensurePlayerScenes(id);
  return s;
@@ -543,7 +543,7 @@ function interactionScene(s,value,kind='duel'){
 function availableInteractionKinds(s,value){return['duel','team','learn'].filter(kind=>!!interactionScene(s,value,kind));}
 function practiceScene(s,key){return interactionScene(s,key,'duel')||interactionScene(s,key,'learn')||interactionScene(s,key,'team');}
 function bondWith(s,profile,success,relation,live=true){const id=String(profile.playerId),previous=s.relationships[id]||{trust:40,understanding:15,interactions:0};s.relationships[id]={trust:round(clamp(previous.trust+(live?(success?(relation==='teammate'?4:relation==='training'?2:1):-.8):0)),1),understanding:round(clamp(previous.understanding+(success?3:1)),1),interactions:previous.interactions+1,lastStep:s.step};return s.relationships[id];}
-function practiceLegend(s,key,index,sceneId){
+function practiceLegendV41(s,key,index,sceneId){
  upgrade(s);if(s.pending||s.retired)return{ok:false,message:'请先完成当前回合。退役后可以让下一代继续这些互动。'};const profile=interactionPlayer(key);if(!profile)return{ok:false,message:'没有找到这位资料库球员。'};
  const all=ensurePlayerScenes(profile),scene=sceneId?all.find(x=>x.id===sceneId&&x.roles.includes(s.pos)):practiceScene(s,profile),option=scene?.options[index];if(!option)return{ok:false,message:'这个情境不适合你当前的位置，请选择其他互动类型。'};
  const kind=scene.relation==='teammate'?'team':scene.relation==='training'?'learn':'duel',usage=interactionUsage(s);if(usage.used.includes(kind)||usage.used.length>=usage.limit)return{ok:false,message:'本回合已完成这类互动。可以选择另一类，或继续人生后再来。'};
@@ -566,12 +566,137 @@ function setupMatch(s){
 function setupInternationalMatch(s){setupInternationalMatchV40(s);const p=s.pending,c=s.international.callup;if(c.level!=='senior'){registerPendingPlayers(s);return;}if(!p?.playerDuel){const national=D.players.filter(row=>row[2]===c.opponent).sort((a,b)=>(b[8]||b[6]||0)-(a[8]||a[6]||0)).slice(0,3),pool=national.flatMap(row=>ensurePlayerScenes(row[0]).filter(x=>(x.relation||'opponent')==='opponent'));attachLegendScenes(s,p,pool);}registerPendingPlayers(s);}
 function matchOptions(s){const result=matchOptionsV40(s);if(!result)return null;if(result.relation==='teammate'){const bonus=(s.relationships?.[String(result.playerId)]?.understanding||0)/2500;return{...result,chemistryBonus:round(bonus,3),options:result.options.map(o=>({...o,chance:round(clamp(o.chance+bonus,.1,s.secret?.active?.985:.95),2)}))};}return result;}
 function play(s,index){const scene=s.pending?.kind==='match'?matchOptions(s):null,result=playV40(s,index);if(result&&scene?.playerKey){const profile=interactionPlayer(scene.playerKey);if(profile)bondWith(s,profile,result.success,scene.relation||'opponent');}return result;}
-function validate(s){
+function validateV41(s){
  try{if(s.pending?.interactionPlayerIds){if(!Array.isArray(s.pending.interactionPlayerIds)||s.pending.interactionPlayerIds.length>2||s.pending.interactionPlayerIds.some(id=>!interactionRows.has(String(id))))return false;for(const id of s.pending.interactionPlayerIds)ensurePlayerScenes(id);}
  if(!validateV40(s))return false;const bonds=s.relationships||{};if(typeof bonds!=='object'||Array.isArray(bonds)||Object.keys(bonds).length>1200||Object.entries(bonds).some(([id,b])=>!interactionRows.has(id)||![b.trust,b.understanding].every(v=>Number.isFinite(v)&&v>=0&&v<=100)||!Number.isInteger(b.interactions)||b.interactions<0))return false;
  const turn=s.duels.turnInteractions;if(turn&&(!Number.isInteger(turn.step)||turn.step<0||turn.step>s.step||!Array.isArray(turn.used)||turn.used.length>3||new Set(turn.used).size!==turn.used.length||turn.used.some(x=>!['duel','team','learn'].includes(x))))return false;return true;
  }catch{return false;}
 }
 
-g.ProEngine={interactionPlayer,interactionPosition,ensurePlayerScenes,interactionCounts,listInteractions,interactionScene,availableInteractionKinds,interactionUsage,TACTICS,MENTORING,SHENZHEN_ID,setupMatch,setupInternationalMatch,achievementStatus,checkAchievements,createChild,mentorChild,nextGeneration,answerCallup,nationalCalendar,callupChance,updateCallup,practiceScene,practiceLegend,legendCatalog,setTactic,worldHonors,start,migrate,validate,upgrade,squadTier,competitionContext,arcSpan,arcLabel,offerAnalysis,scoutInvitations,declineOffer,autoMatch,attrs,positions,training,phases,roles,stage,rating,valuation,getClub,activeClub,date,rand,normal,clamp,round,events:EVENTS,prepare,currentEvent,eventProbability,chooseEvent,next,matchOptions,play,finish,ensureLeague,leagueKey,trialProbability,applyClub,negotiate,negotiationChance,sign,renewal,transferRequest,recall,buyout,hireAgent,route,release,changePosition,retire,injuryChance,marketOpen};
+/* 4.2: stable careers, registration windows, worldwide contacts and fictional player recruitment. */
+function registrationKey(s){return s.year+':'+s.quarter;}
+function externalMoves(s){return s.careerMoves.filter(m=>['academy','free','transfer','loan','buyout'].includes(m.kind));}
+function upgrade(s){
+ upgradeV41(s);if(!s||s.v!==2)return s;s.release='4.2';
+ if(!s.transferControl){const last=externalMoves(s).at(-1);s.transferControl={lastBatchStep:-100,lastBatchKey:'',lastRegistrationStep:last?.step??-100,lastRegistrationKey:last?((s.originYear||2026)+Math.floor(last.step/4))+':'+last.step%4:'',lastRenewalOfferStep:-100};}
+ s.clubContacts=s.clubContacts||[];s.recruitment=s.recruitment||{lastCheckStep:-1,lastInviteStep:-100,leads:[]};return s;
+}
+function marketOpen(s){return s.quarter===0||s.quarter===2;}
+function registrationStatus(s,id,kind='trial'){
+ const c=getClub(id),internal=['renewal','promotion'].includes(kind)&&c?.id===s.clubId;
+ if(!c)return{allowed:false,title:'球队不存在',reason:'请重新选择球队。'};
+ if(s.retired||s.pending)return{allowed:false,title:'先完成当前阶段',reason:'完成比赛或人生抉择后，再处理球队事务。'};
+ if(s.route!=='football'||s.age<9)return{allowed:false,title:'当前发展阶段',reason:'选择职业足球路线，并从九岁起评估俱乐部青训。'};
+ if(internal)return{allowed:true,internal:true,title:kind==='promotion'?'队内晋升':'本队续约',reason:'队内名单调整与续约可以在注册期之外沟通。'};
+ if(s.age<18&&c.country!==s.nation)return{allowed:false,overseasYouth:true,title:'海外青训观察',reason:'可以联系海外青训与短期体验；本作未成年不直接跨国注册，成年后再评估加盟。'};
+ const ctrl=s.transferControl,last=ctrl?.lastRegistrationStep??externalMoves(s).at(-1)?.step??-100;
+ if(ctrl?.lastRegistrationKey===registrationKey(s))return{allowed:false,title:'本窗口已完成注册',reason:'本窗口已经更换过球队，先履行新计划，避免连续签约。'};
+ if(s.loan&&kind!=='buyout')return{allowed:false,title:'正在履行租借',reason:'租借期间先履行协议，或协商回归、买断。'};
+ const free=!s.contract;
+ if(!free&&!marketOpen(s))return{allowed:false,title:'注册窗口关闭',reason:'现在可联系、考察或听取推荐，正式转会和租借等下一个夏季或冬季注册期。'};
+ const minimum=s.age<18?4:kind==='loan'?2:s.transferListed||s.coach<35?2:4;
+ if(!free&&kind!=='buyout'&&s.step-last<minimum)return{allowed:false,title:'留队稳定期',reason:kind==='loan'?'新加盟后先适应至少半年，再评估外租。':'新加盟后先稳定效力一年；挂牌或困难处境可在半年后评估。',wait:minimum-(s.step-last)};
+ return{allowed:true,free,title:free?(s.age<18?'首次青训 / 自由身份':'自由球员通道'):s.quarter===0?'夏季注册期':'冬季注册期',reason:free?'自由身份可接洽新计划；本作对自由球员注册作简化处理。':'本作按季度简化夏、冬两个注册期，各国真实起止日期不同。'};
+}
+function eligible(s,c,kind){
+ if(s.retired||s.pending)return'请先完成当前阶段。';if(s.route!=='football')return'请先选择职业足球路线。';if(s.age<9)return'9 岁起可以联系俱乐部青训。';
+ if(kind==='academy'&&s.age>=18)return'成年球员请联系职业球队。';if(c.id===s.clubId||c.id===s.loan?.clubId)return'你已经效力于这家球队。';
+ if(kind==='loan'&&(!s.contract||s.contract.kind!=='pro'||s.loan))return'租借需要有效职业合同，且没有正在进行的租借。';if(kind==='loan'&&s.contract.end-s.step<2)return'母队合同不足半年，请先评估续约。';if(s.loan)return'租借期间请先履行协议或协商回归。';return null;
+}
+function contactSummary(s){return s.clubContacts.slice().reverse().slice(0,8);}
+function trialProbability(s,c,kind='trial'){const base=trialProbabilityV41(s,c,kind);if(s.secret?.active)return base;const referral=s.recruitment?.leads.some(l=>l.clubId===c.id&&!l.followed&&s.step-l.created<=6&&l.response?.success&&['agent','role'].includes(l.response.choice));const observed=s.clubContacts?.some(x=>x.clubId===c.id&&x.success&&s.step-x.step<=8);return round(clamp(base+(referral?.07:0)+(observed?.02:0),.08,.96),2);}
+function applyClub(s,id,kind='trial'){
+ upgrade(s);const c=getClub(id);if(!c)return{ok:false,message:'没有找到这家俱乐部。'};if(s.age<18&&kind==='trial')kind='academy';const error=eligible(s,c,kind);if(error)return{ok:false,message:error};
+ const status=registrationStatus(s,id,kind);
+ if(status.allowed){const result=applyClubV41(s,id,kind);if(result.ok&&result.offer){result.offer.source='contact';const lead=s.recruitment.leads.find(l=>l.clubId===id&&l.response?.success&&!l.followed&&s.step-l.created<=6);if(lead){result.offer.recruiterId=lead.playerId;result.offer.reason=lead.playerName+'的推荐带来了正式沟通；最终合同仍由俱乐部决定。';lead.followed=true;}s.clubContacts.filter(x=>x.clubId===id).forEach(x=>x.followed=true);}return result;}
+ if(s.applications.some(a=>a.id===id&&a.step===s.step&&a.kind===kind))return{ok:false,message:'本阶段已经联系过这家球队，结果已记录。'};
+ if(s.applications.filter(a=>a.step===s.step).length>=4)return{ok:false,message:'每季度最多联系四家球队，请先比较已获得的信息。'};
+ const chance=trialProbability(s,c,kind),roll=rand(s),success=roll<chance,type=status.overseasYouth?'youth-observation':'future-interest';
+ s.applications.push({id,kind,step:s.step,chance,success});const record={clubId:id,kind,type,step:s.step,chance,roll,success,followed:false};s.clubContacts.push(record);if(s.clubContacts.length>40)s.clubContacts.shift();
+ if(success)apply(s,{network:.5});const text=status.overseasYouth?(success?'海外青训愿意持续观察你，可以讨论短期体验；这不是跨国注册或职业合同。':'海外青训暂未安排观察，先积累同龄赛事表现。'):(success?'球队愿意持续考察，已记录下个可注册阶段的接洽意向。当前合同和球队保持不变。':'球队暂未推进考察，继续提升表现再评估下一次联系。');
+ note(s,'联系 '+(c.cn||c.n),text,'application',{success,chance});return{ok:success,rolled:true,contact:true,record,chance,message:text};
+}
+function makeOpportunity(s,c,kind,reason,source='scout'){
+ if(!c||s.offers.some(o=>o.clubId===c.id&&o.status==='active'&&o.expires>=s.step))return null;
+ const t=offerTerms(s,c,kind);if(kind==='loan'){t.wage=s.contract.wage;t.appBonus=s.contract.appBonus;t.goalBonus=s.contract.goalBonus;t.release=s.contract.release;t.signingBonus=0;t.duration=s.contract.end-s.step>=4?4:2;t.squad='first';t.role=rating(s)>=c.power-8?'starter':'rotation';}
+ if(kind==='renewal')t.wage=Math.max(s.contract.wage,t.wage);
+ const o={id:'offer'+s.nextId++,clubId:c.id,kind,source,reason,created:s.step,expires:s.step+(kind==='renewal'?1:0),status:'active',terms:t,base:JSON.parse(JSON.stringify(t)),attempts:0,releaseAgreed:true,transferFee:s.contract?.kind==='pro'&&!['loan','renewal'].includes(kind)?valuation(s):0};
+ s.offers.push(o);s.invitationMemory.push({clubId:c.id,step:s.step});return o;
+}
+function scoutInvitations(s,force=false){
+ upgrade(s);if(s.pending||s.retired||s.route!=='football'||s.age<9||s.loan)return[];const ctrl=s.transferControl,offers=[];
+ const remaining=s.contract?s.contract.end-s.step:0,active=s.offers.filter(o=>o.status==='active'&&o.expires>=s.step);
+ if(s.contract&&remaining<=2&&s.step-s.contract.start>=4&&s.step-ctrl.lastRenewalOfferStep>=2&&!active.some(o=>o.kind==='renewal')){const own=makeOpportunity(s,getClub(s.clubId),'renewal','合同进入最后半年，现俱乐部希望讨论下一份计划。','club');if(own){offers.push(own);ctrl.lastRenewalOfferStep=s.step;}}
+ if(!marketOpen(s)&&s.contract)return offers;
+ const batchKey=marketOpen(s)?registrationKey(s):'free:'+Math.floor(s.step/2);
+ if(ctrl.lastBatchKey===batchKey||s.step-ctrl.lastBatchStep<2||active.filter(o=>o.clubId!==s.clubId).length>=2)return offers;
+ const need=!s.contract||remaining<=2||s.transferListed||s.age>=18&&s.contract.role==='prospect'&&s.coach<45;
+ if(!need)return offers;
+ const kind=s.age<18?'academy':s.contract&&remaining>2&&!s.transferListed?'loan':'trial';
+ if(s.contract&&!registrationStatus(s,s.clubId,kind).allowed)return offers;
+ ctrl.lastBatchStep=s.step;ctrl.lastBatchKey=batchKey;s.lastScoutStep=s.step;
+ const r=rating(s),target=s.age<18?r+20:r+3,recent=new Set(s.invitationMemory.filter(x=>s.step-x.step<8).map(x=>x.clubId));
+ let pool=D.clubs.filter(c=>c.id!==s.clubId&&!c.historical&&(s.age<18?c.country===s.nation:c.source==='tm'||c.current)).map(c=>getClub(c.id));
+ const fresh=pool.filter(c=>!recent.has(c.id));if(fresh.length>=3)pool=fresh;
+ const domestic=pool.filter(c=>c.country===s.nation),local=domestic.length>=2?domestic:pool,chosen=[];
+ for(const [index,items]of [local,local,s.age<18?local:pool].entries()){const sorted=items.map(c=>({c,score:index===0?85-Math.abs(c.power-target+8)*2+c.playing*.08:index===1?c.academy-Math.abs(c.power-target)*.8:85-Math.abs(c.power-target-10)*2+c.power*.1})).sort((a,b)=>b.score-a.score).slice(0,60).map(x=>({...x,score:x.score+rand(s)*6})).sort((a,b)=>b.score-a.score);const c=sorted.find(x=>!chosen.some(y=>y.id===x.c.id))?.c;if(c)chosen.push(c);}
+ if(!s.firstAcademyId&&s.nation==='China'&&s.age<18&&!chosen.some(c=>c.id===SHENZHEN_ID))chosen.push(getClub(SHENZHEN_ID));
+ if(s.heritage&&!s.firstAcademyId&&s.age<18){const c=getClub(s.heritage.parentClubId);if(c?.country===s.nation&&!chosen.some(x=>x.id===c.id))chosen.push(c);}
+ if(s.secret?.active&&s.age>=18){chosen.splice(0,chosen.length,...['tm418','tm281','tm131'].filter(id=>id!==s.clubId).map(getClub));}
+ for(const [i,c]of chosen.entries()){const o=makeOpportunity(s,c,kind,['球探在阶段评估后提出稳定比赛的方案。','培养部门在注册期提供成长计划。','球队愿在本次注册期讨论更高平台的机会。'][Math.min(i,2)],s.secret?.active?'destiny':'scout');if(o)offers.push(o);}
+ if(offers.length)note(s,'注册期 · 阶段性来信',`${offers.length} 份方案等待比较。保持现合同、继续留队也是完整的发展选择。`,'offer');return offers;
+}
+function sign(s,id){
+ upgrade(s);const o=s.offers.find(x=>x.id===id&&x.status==='active');if(!o||o.expires<s.step)return{ok:false,message:'意向已失效，请重新联系。'};
+ const c=getClub(o.clubId),status=registrationStatus(s,o.clubId,o.kind);if(!status.allowed)return{ok:false,message:status.title+'：'+status.reason};
+ if(o.kind==='academy'&&s.age>=18)return{ok:false,message:'成年后请重新评估职业合同，不再签少年青训协议。'};
+ if(o.kind==='renewal'&&(o.clubId!==s.clubId||!s.contract))return{ok:false,message:'原合同已变化，无法继续这份续约。'};
+ if(o.kind==='promotion'){
+  if(o.clubId!==s.clubId||!s.contract||s.loan||s.age<16||squadTier(s)==='first')return{ok:false,message:'当前不符合本队晋升条件。'};
+  s.squad='first';s.contract.squad='first';s.contract.role=o.terms.role;s.contract.promisedRole=o.terms.role;s.coach=clamp(s.coach+3);o.status='signed';s.offers=s.offers.filter(x=>x.status!=='active'||x.kind!=='promotion');s.careerMoves.push({step:s.step,age:s.age,kind:'promotion',from:s.clubId,to:s.clubId});note(s,'升入本队一线队','教练组调整了你的训练与比赛名单，原合同期限及薪资继续履行，不重复支付签字费。','contract');checkAchievements(s);return{ok:true,message:'一线队晋升已确认，原合同继续履行。'};
+ }
+ if(c.id===s.clubId&&o.kind!=='renewal')return{ok:false,message:'你已经效力于这支球队，请使用续约或晋升渠道。'};
+ if(o.kind==='renewal'&&(s.contract.end-s.step>4||s.step-s.contract.start<4))return{ok:false,message:'合同仍稳定履行，通常进入最后一年再谈续约。'};
+ if(o.kind==='loan'&&(!s.contract||s.contract.kind!=='pro'||s.loan||s.contract.end-s.step<2))return{ok:false,message:'当前不符合租借条件。'};
+ const result=signV41(s,id);if(result.ok&&!['renewal','promotion'].includes(o.kind)){s.transferControl.lastRegistrationStep=s.step;s.transferControl.lastRegistrationKey=registrationKey(s);s.clubContacts.forEach(x=>{if(x.clubId===c.id)x.followed=true;});}return result;
+}
+function renewal(s){upgrade(s);if(s.contract&&(s.contract.end-s.step>4||s.step-s.contract.start<4))return{ok:false,message:'先稳定履行现有合同，进入最后一年再评估续约。'};return renewalV41(s);}
+function promotionInvitation(s){const o=promotionInvitationV41(s);if(o){o.terms.wage=s.contract.wage;o.terms.signingBonus=0;o.base=JSON.parse(JSON.stringify(o.terms));}return o;}
+function practiceLegend(s,key,index,sceneId){const result=practiceLegendV41(s,key,index,sceneId);if(result.ok)s.duels.lastInteraction={step:s.step,playerId:result.profile.playerId,playerKey:result.profile.key,kind:result.kind,sceneId:result.scene.id,index,success:result.success,chance:result.chance,roll:result.roll,choice:result.choice};return result;}
+function recruitmentChoices(s,lead){
+ const base=clamp(.67+s.reputation/800+(s.relationships?.[String(lead.playerId)]?.understanding||0)/1000,.55,.9);
+ return[{id:'agent',n:'愿意了解，让经纪团队接洽',chance:round(base,2),good:'推荐进入球队考察名单，可在合适窗口联系俱乐部，合同仍需正式谈判。',bad:'球员愿意推荐，但俱乐部暂时没有对应名额。'},
+ {id:'role',n:'先问角色、薪资与发展计划',chance:round(clamp(base+.1,.1,.95),2),good:'对方介绍了可能的队内角色，建议你比较出场空间后再决定。',bad:'对方无法代表管理层承诺薪资与主力位置，信息仍不明确。'},
+ {id:'later',n:'先完成本赛季，之后再聊',chance:.88,good:'对方尊重你的职业态度，愿意为未来保持联系。',bad:'球队下阶段可能调整引援方向，这次联系暂时冷却。'},
+ {id:'decline',n:'婉拒招募，专注现在的球队',chance:.94,good:'你表达了尊重，也向本队明确了留队态度。',bad:'对方有些失望，近期不会再推动这次推荐。'}];
+}
+function updateRecruitment(s,result=s.lastResult){
+ upgrade(s);const R=s.recruitment;if(R.lastCheckStep===s.step||s.pending||s.retired||s.age<18||s.route!=='football'||squadTier(s)!=='first')return null;R.lastCheckStep=s.step;
+ if(!result?.professional||result.apps<3||s.injury||s.step-R.lastInviteStep<4||R.leads.some(l=>l.status==='new'&&s.step<=l.expires))return null;
+ const r=rating(s),good=result.matchRating>=7.2||s.form>=78&&r>=65||s.secret?.active;if(!good||r<55)return null;
+ const probability=s.secret?.active?.95:clamp(.3+(result.matchRating-7)*.16+s.reputation/400,.24,.8);if(rand(s)>=probability)return null;
+ const used=new Set(R.leads.filter(l=>s.step-l.created<12).map(l=>l.clubId)),known=g.CAREER_INTERACTION_PROFILES||[];
+ let pool=known.filter(p=>p.clubId!==s.clubId&&p.clubId!==s.loan?.clubId&&!used.has(p.clubId)).filter(p=>{const c=getClub(p.clubId);return c&&!c.historical&&c.power>=r-20&&c.power<=r+18;});
+ if(!pool.length)return null;
+ const abroad=pool.filter(p=>getClub(p.clubId).country!==s.nation);if(abroad.length&&rand(s)<.65)pool=abroad;
+ const profile=choose(s,pool),club=getClub(profile.clubId),t=offerTerms(s,club,'trial'),a=offerAnalysis(s,{clubId:club.id,terms:t});
+ const lead={id:'recruit'+s.nextId++,clubId:club.id,playerId:profile.playerId,playerName:profile.name,created:s.step,expires:s.step+4,status:'new',followed:false,reason:result.matchRating>=7.2?'你的阶段比赛评分 '+result.matchRating+' 引起了注意':'你的持续状态与一线队表现引起了注意',plan:{wage:t.wage,role:a.role,tierName:a.tierName,minutes:a.minutes,development:a.development,advice:a.advice},response:null};
+ R.leads.push(lead);if(R.leads.length>20)R.leads.shift();R.lastInviteStep=s.step;note(s,'球员主动招募 · '+profile.name,`${profile.name}希望与你在${club.cn||club.n}成为队友。球员的推荐是游戏情节，不等同于俱乐部报价。`,'recruitment');return lead;
+}
+function answerRecruitment(s,id,choice){
+ upgrade(s);const lead=s.recruitment.leads.find(l=>l.id===id);if(!lead||lead.status!=='new'||s.step>lead.expires||s.pending||s.retired)return{ok:false,message:'这次招募已处理或已过期，请先完成当前阶段。'};
+ const option=recruitmentChoices(s,lead).find(c=>c.id===choice);if(!option)return{ok:false,message:'请选择一种回复。'};const roll=rand(s),success=roll<option.chance;lead.status=choice==='decline'?'declined':choice==='later'?'deferred':'answered';lead.response={choice,chance:option.chance,roll,success,text:success?option.good:option.bad,step:s.step};
+ if(choice==='decline'&&success)apply(s,{loyalty:2,coach:1});else if(success)apply(s,{network:1,knowledge:choice==='role'?1:0});
+ const profile=interactionPlayer(lead.playerId);if(profile)bondWith(s,profile,success,'training');note(s,'回复 '+lead.playerName,lead.response.text,'recruitment');return{ok:true,lead,success,message:lead.response.text};
+}
+function finish(s){const result=finishV41(s);if(result){const lead=updateRecruitment(s,result);result.newRecruitment=lead?.id||null;}return result;}
+function validate(s){
+ try{if(!validateV41(s))return false;const T=s.transferControl;if(!T||!['lastBatchStep','lastRegistrationStep','lastRenewalOfferStep'].every(k=>Number.isInteger(T[k])&&T[k]>=-100&&T[k]<=s.step)||!['lastBatchKey','lastRegistrationKey'].every(k=>typeof T[k]==='string'&&T[k].length<=40))return false;
+ if(!Array.isArray(s.clubContacts)||s.clubContacts.length>40||s.clubContacts.some(x=>!clubs.has(x.clubId)||!['academy','trial','loan'].includes(x.kind)||!['youth-observation','future-interest'].includes(x.type)||!Number.isInteger(x.step)||x.step<0||x.step>s.step||!Number.isFinite(x.chance)||x.chance<0||x.chance>1||!Number.isFinite(x.roll)||x.roll<0||x.roll>1||typeof x.success!=='boolean'||typeof x.followed!=='boolean'))return false;
+ const R=s.recruitment;if(!R||!Number.isInteger(R.lastCheckStep)||R.lastCheckStep< -1||R.lastCheckStep>s.step||!Number.isInteger(R.lastInviteStep)||R.lastInviteStep< -100||R.lastInviteStep>s.step||!Array.isArray(R.leads)||R.leads.length>20)return false;
+ for(const l of R.leads){const p=interactionPlayer(l.playerId);if(!p||p.clubId!==l.clubId||!clubs.has(l.clubId)||typeof l.id!=='string'||!/^recruit\d+$/.test(l.id)||typeof l.playerName!=='string'||l.playerName.length>100||!['new','answered','deferred','declined'].includes(l.status)||!Number.isInteger(l.created)||l.created<0||l.created>s.step||!Number.isInteger(l.expires)||l.expires!==l.created+4||typeof l.followed!=='boolean'||!l.plan||!Number.isFinite(l.plan.wage)||l.plan.wage<0)return false;if(l.response&&(!['agent','role','later','decline'].includes(l.response.choice)||typeof l.response.success!=='boolean'||![l.response.chance,l.response.roll].every(v=>Number.isFinite(v)&&v>=0&&v<=1)||typeof l.response.text!=='string'||l.response.text.length>500))return false;}
+ return true;}catch{return false;}
+}
+
+g.ProEngine={registrationStatus,registrationKey,contactSummary,recruitmentChoices,updateRecruitment,answerRecruitment,promotionInvitation,interactionPlayer,interactionPosition,ensurePlayerScenes,interactionCounts,listInteractions,interactionScene,availableInteractionKinds,interactionUsage,TACTICS,MENTORING,SHENZHEN_ID,setupMatch,setupInternationalMatch,achievementStatus,checkAchievements,createChild,mentorChild,nextGeneration,answerCallup,nationalCalendar,callupChance,updateCallup,practiceScene,practiceLegend,legendCatalog,setTactic,worldHonors,start,migrate,validate,upgrade,squadTier,competitionContext,arcSpan,arcLabel,offerAnalysis,scoutInvitations,declineOffer,autoMatch,attrs,positions,training,phases,roles,stage,rating,valuation,getClub,activeClub,date,rand,normal,clamp,round,events:EVENTS,prepare,currentEvent,eventProbability,chooseEvent,next,matchOptions,play,finish,ensureLeague,leagueKey,trialProbability,applyClub,negotiate,negotiationChance,sign,renewal,transferRequest,recall,buyout,hireAgent,route,release,changePosition,retire,injuryChance,marketOpen};
 })(typeof window!=='undefined'?window:globalThis);
